@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchurl, openssl, python, zlib, libuv, util-linux, http-parser, bash
+{ lib, stdenv, fetchurl, openssl, python, zlib, libuv, http-parser, icu, bash
 , pkg-config, which, buildPackages
 , testers
 # for `.pkgs` attribute
@@ -7,7 +7,6 @@
 , writeScript, coreutils, gnugrep, jq, curl, common-updater-scripts, nix, runtimeShell
 , gnupg
 , darwin, xcbuild
-, procps, icu
 , installShellFiles
 }:
 
@@ -16,12 +15,58 @@
 let
   inherit (darwin.apple_sdk.frameworks) CoreServices ApplicationServices;
 
-  isCross = stdenv.hostPlatform != stdenv.buildPlatform;
-
   majorVersion = lib.versions.major version;
   minorVersion = lib.versions.minor version;
 
   pname = if enableNpm then "nodejs" else "nodejs-slim";
+
+  canExecute = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+
+  # See valid_os and valid_arch in configure.py.
+  destOS =
+    let
+      platform = stdenv.hostPlatform;
+    in
+    if platform.isiOS then
+      "ios"
+    else if platform.isAndroid then
+      "android"
+    else if platform.isWindows then
+      "win"
+    else if platform.isDarwin then
+      "mac"
+    else if platform.isLinux then
+      "linux"
+    else if platform.isOpenBSD then
+      "openbsd"
+    else if platform.isFreeBSD then
+      "freebsd"
+    else
+      throw "unsupported os ${platform.uname.system}";
+  destCPU =
+    let
+      platform = stdenv.hostPlatform;
+    in
+    if platform.isAarch then
+      "arm" + lib.optionalString platform.is64bit "64"
+    else if platform.isMips32 then
+      "mips" + lib.optionalString platform.isLittleEndian "le"
+    else if platform.isMips64 && platform.isLittleEndian then
+      "mips64el"
+    else if platform.isPower then
+      "ppc" + lib.optionalString platform.is64bit "64"
+    else if platform.isx86_64 then
+      "x64"
+    else if platform.isx86_32 then
+      "ia32"
+    else if platform.isS390x then
+      "s390x"
+    else if platform.isRiscV64 then
+      "riscv64"
+    else if platform.isLoongArch64 then
+      "loong64"
+    else
+      throw "unsupported cpu ${platform.uname.processor}";
 
   useSharedHttpParser = !stdenv.isDarwin && lib.versionOlder "${majorVersion}.${minorVersion}" "11.4";
 
@@ -61,8 +106,6 @@ let
       NIX_CFLAGS_COMPILE = "-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=101300";
     };
 
-    depsBuildBuild = [ buildPackages.stdenv.cc openssl libuv zlib icu ];
-
     # NB: technically, we do not need bash in build inputs since all scripts are
     # wrappers over the corresponding JS scripts. There are some packages though
     # that use bash wrappers, e.g. polaris-web.
@@ -80,33 +123,27 @@ let
       inherit (stdenv.hostPlatform) gcc isAarch32;
     in sharedConfigureFlags ++ lib.optionals (lib.versionOlder version "19") [
       "--without-dtrace"
-    ] ++ (lib.optionals isCross [
-      "--cross-compiling"
-      "--dest-cpu=${let platform = stdenv.hostPlatform; in
-                    if      platform.isAarch32 then "arm"
-                    else if platform.isAarch64 then "arm64"
-                    else if platform.isMips32 && platform.isLittleEndian then "mipsel"
-                    else if platform.isMips32 && !platform.isLittleEndian then "mips"
-                    else if platform.isMips64 && platform.isLittleEndian then "mips64el"
-                    else if platform.isPower && platform.is32bit then "ppc"
-                    else if platform.isPower && platform.is64bit then "ppc64"
-                    else if platform.isx86_64 then "x86_64"
-                    else if platform.isx86_32 then "x86"
-                    else if platform.isS390 && platform.is64bit then "s390x"
-                    else if platform.isRiscV && platform.is64bit then "riscv64"
-                    else throw "unsupported cpu ${stdenv.hostPlatform.uname.processor}"}"
-    ]) ++ (lib.optionals (isCross && isAarch32 && lib.hasAttr "fpu" gcc) [
-      "--with-arm-fpu=${gcc.fpu}"
-    ]) ++ (lib.optionals (isCross && isAarch32 && lib.hasAttr "float-abi" gcc) [
-      "--with-arm-float-abi=${gcc.float-abi}"
-    ]) ++ extraConfigFlags;
+    ] ++ lib.optionals (!canExecute) [
+      # Node.js requires matching bitness between build and host platforms, e.g.
+      # for V8 startup snapshot builder (see tools/snapshot) and some other
+      # tools. We apply a patch that runs these tools using a host platform
+      # emulator and avoid cross-compiling altogether (from the build system’s
+      # perspective).
+      "--emulator=${stdenv.hostPlatform.emulator buildPackages}"
+    ] ++ [
+      "--no-cross-compiling"
+      "--dest-os=${destOS}"
+      # Note that ARM features are detected from C macros. MIPS features are
+      # not (mips_arch, mips_fpu, mips_float_abi), but we don’t have equivalent
+      # definitions in lib/systems.
+      "--dest-cpu=${destCPU}"
+    ] ++ extraConfigFlags;
 
     configurePlatforms = [];
 
     dontDisableStatic = true;
 
     configureScript = writeScript "nodejs-configure" ''
-      export CC_host="$CC_FOR_BUILD" CXX_host="$CXX_FOR_BUILD"
       exec ${python.executable} configure.py "$@"
     '';
 
@@ -207,7 +244,7 @@ let
     postInstall = ''
       HOST_PATH=$out/bin patchShebangs --host $out
 
-      ${lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+      ${lib.optionalString canExecute ''
         $out/bin/${self.meta.mainProgram} --completion-bash > ${self.meta.mainProgram}.bash
         installShellCompletion ${self.meta.mainProgram}.bash
       ''}
@@ -231,18 +268,7 @@ let
       mkdir -p $libv8/lib
       pushd out/Release/obj.target
       find . -path "./torque_*/**/*.o" -or -path "./v8*/**/*.o" | sort -u >files
-      ${if stdenv.buildPlatform.isGnu then ''
-        ar -cqs $libv8/lib/libv8.a @files
-      '' else ''
-        # llvm-ar supports response files, so take advantage of it if it’s available.
-        if [ "$(basename $(readlink -f $(command -v ar)))" = "llvm-ar" ]; then
-          ar -cqs $libv8/lib/libv8.a @files
-        else
-          cat files | while read -r file; do
-            ar -cqS $libv8/lib/libv8.a $file
-          done
-        fi
-      ''}
+      $AR -cqs $libv8/lib/libv8.a @files
       popd
 
       # copy v8 headers
@@ -284,14 +310,6 @@ let
       platforms = platforms.linux ++ platforms.darwin;
       mainProgram = "node";
       knownVulnerabilities = optional (versionOlder version "18") "This NodeJS release has reached its end of life. See https://nodejs.org/en/about/releases/.";
-
-      # Node.js build system does not have separate host and target OS
-      # configurations (architectures are defined as host_arch and target_arch,
-      # but there is no such thing as host_os and target_os).
-      #
-      # We may be missing something here, but it doesn’t look like it is
-      # possible to cross-compile between different operating systems.
-      broken = stdenv.buildPlatform.parsed.kernel.name != stdenv.hostPlatform.parsed.kernel.name;
     };
 
     passthru.python = python; # to ensure nodeEnv uses the same version
