@@ -1,0 +1,38 @@
+Discussion on https://discord.gg/eco
+See https://discord.com/channels/254025510651297802/421479620479680523/1097825867683598376
+
+> tie: Does SLG have any policy for packaging the server in Linux distributions?
+> Would it be OK to package binary builds of EcoServerLinux in Nixpkgs?
+> Technically that won’t be redistribution/re-upload since Nix fetches packages
+> from URLs (although there is a cache to speed up things). The only change
+> would be that, at package build time, the builder would modify the ELF rpath
+> to point to the required dynamic libraries (that’s how packages that are not
+> build from source in Nixpkgs are built), and a wrapper program I’ve described
+> above to write data to the current working directory.
+>
+> Dennis: From which URL?
+>
+> tie: https://eco-releases-staging-eu.s3.eu-central-1.amazonaws.com/EcoServerLinux_v0.9.7.11-beta-release-480.zip
+>
+> Dennis: We don't generally have issues with people making packages as long as
+> its clearly stated they're not official and not supported, but we'd prefer our
+> links to not be used for traffic and DoS reasons. Technically they shouldn't
+> be usable without client login at all, but that must have gotten lost at some
+> point.
+>
+> tie: […] So that would eventually be fixed? Having public server zip/tarball
+> download URLs is pretty useful, especially since it’s already possible to
+> fetch image from Docker or Steam with anonymous login. But given that it’s
+> currently hosted on AWS S3, I guess the concern is AWS bill for egress
+> traffic?
+>
+> Dennis: Yes, that is going to be fixed.
+> Dennis: For server admins we always recommend to use SteamCMD.
+> Dennis: I'm not a devops guy (anymore, at least here), so I can't tell you why
+> we did that exactly. I just know we locked the links to a session token on
+> web, as for one reason many hosts abused our traffic line to update their
+> servers in the past and as we had DoS issues with Amazon. Of what type is
+> beyond me, as I'm not involved in the specifics.
+> Dennis: But yes, Amazon bills tend to be surprisingly big even for indie as
+> us, so getting that back in check is likely going to happen.
+> Dennis: Steam anonymous isn't a problem, as that doesn't cost us money 😄

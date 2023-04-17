@@ -1,0 +1,17 @@
+[package]
+name = "wrapper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.71"
+copy_dir = "0.1.2"
+
+[dependencies.clap]
+version = "4.2.7"
+features = ["derive"]
+
+[dependencies.nix]
+version = "0.26.2"
+default-features = false
+features = ["user", "sched", "mount"]
