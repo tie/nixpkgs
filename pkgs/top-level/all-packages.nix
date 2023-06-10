@@ -37109,6 +37109,8 @@ with pkgs;
 
   rrootage = callPackage ../games/rrootage { };
 
+  steamworks-sdk-redist = callPackage ../games/steamworks-sdk-redist { };
+
   space-cadet-pinball = callPackage ../games/space-cadet-pinball {
     inherit (darwin.apple_sdk.frameworks) Cocoa;
   };
