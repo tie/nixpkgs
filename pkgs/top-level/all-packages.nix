@@ -37111,6 +37111,8 @@ with pkgs;
 
   steamworks-sdk-redist = callPackage ../games/steamworks-sdk-redist { };
 
+  satisfactory-server = callPackage ../games/satisfactory-server { };
+
   space-cadet-pinball = callPackage ../games/space-cadet-pinball {
     inherit (darwin.apple_sdk.frameworks) Cocoa;
   };
