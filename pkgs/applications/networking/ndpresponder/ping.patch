@@ -1,0 +1,13 @@
+diff --git a/hostinfo.go b/hostinfo.go
+index 0858873..b6299b4 100644
+--- a/hostinfo.go
++++ b/hostinfo.go
+@@ -71,7 +71,7 @@ func gatherHostInfo() (hi HostInfo, e error) {
+ 			}
+ 		}
+ 
+-		exec.Command("/usr/bin/ping", "-c", "1", hi.GatewayIP.String()).Run()
++		exec.Command("@iputils@/bin/ping", "-c", "1", hi.GatewayIP.String()).Run()
+ 		logEntry.Debug("waiting for gateway neigh entry")
+ 		time.Sleep(time.Second)
+ 	}

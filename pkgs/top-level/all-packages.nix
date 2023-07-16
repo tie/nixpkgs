@@ -10545,6 +10545,8 @@ with pkgs;
 
   ndppd = callPackage ../applications/networking/ndppd { };
 
+  ndpresponder = callPackage ../applications/networking/ndpresponder { };
+
   nearcore = callPackage ../applications/blockchains/nearcore { };
 
   nebula = callPackage ../tools/networking/nebula { };

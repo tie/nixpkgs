@@ -954,6 +954,7 @@
   ./services/networking/nbd.nix
   ./services/networking/ncdns.nix
   ./services/networking/ndppd.nix
+  ./services/networking/ndpresponder.nix
   ./services/networking/nebula.nix
   ./services/networking/netbird.nix
   ./services/networking/networkd-dispatcher.nix
