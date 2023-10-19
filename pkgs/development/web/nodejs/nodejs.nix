@@ -120,6 +120,15 @@ let
 
     inherit patches;
 
+    # Used at build time, but not copied to the output, so we should not get
+    # Python reference in the output.
+    # See also https://github.com/NixOS/nixpkgs/issues/261820
+    postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
+      patchShebangs --build tools/gyp/pylib/gyp/mac_tool.py
+    '';
+
+    __darwinAllowLocalNetworking = true; # for tests
+
     doCheck = lib.versionAtLeast version "16"; # some tests fail on v14
 
     # Some dependencies required for tools/doc/node_modules (and therefore
