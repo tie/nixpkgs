@@ -10941,21 +10941,29 @@ with pkgs;
 
   ### DEVELOPMENT / GO
 
+  fetchGoModules = callPackage ../by-name/pr/prefetch-go-modules/fetcher.nix { };
+
   # the unversioned attributes should always point to the same go version
   go = go_1_23;
   buildGoModule = buildGo123Module;
 
   go_1_22 = callPackage ../development/compilers/go/1.22.nix { };
+  go122ToolchainHook = goToolchainHook.override { go = __splicedPackages.go_1_22; };
+  go122ModulesHook = goModulesHook.override { goToolchainHook = go122ToolchainHook; };
   buildGo122Module = callPackage ../build-support/go/module.nix {
     go = buildPackages.go_1_22;
   };
 
   go_1_23 = callPackage ../development/compilers/go/1.23.nix { };
+  go123ToolchainHook = goToolchainHook.override { go = __splicedPackages.go_1_23; };
+  go123ModulesHook = goModulesHook.override { goToolchainHook = go123ToolchainHook; };
   buildGo123Module = callPackage ../build-support/go/module.nix {
     go = buildPackages.go_1_23;
   };
 
   go_1_24 = callPackage ../development/compilers/go/1.24.nix { };
+  go124ToolchainHook = goToolchainHook.override { go = __splicedPackages.go_1_24; };
+  go124ModulesHook = goModulesHook.override { goToolchainHook = go124ToolchainHook; };
   buildGo124Module = callPackage ../build-support/go/module.nix {
     go = buildPackages.go_1_24;
   };

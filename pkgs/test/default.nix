@@ -177,6 +177,8 @@ with pkgs;
 
   dotnet = recurseIntoAttrs (callPackages ./dotnet { });
 
+  go = recurseIntoAttrs (callPackages ./go { });
+
   makeHardcodeGsettingsPatch = callPackage ./make-hardcode-gsettings-patch { };
 
   makeWrapper = callPackage ./make-wrapper { };

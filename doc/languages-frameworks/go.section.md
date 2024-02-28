@@ -305,3 +305,68 @@ In case a project doesn't have external dependencies or dependencies are vendore
 
 In case the package has external dependencies that aren't vendored or the build setup is more complex the upstream source might need to be patched.
 Examples for the migration can be found in the [issue tracking migration withing nixpkgs](https://github.com/NixOS/nixpkgs/issues/318069).
+
+## Fetching Go modules with `fetchGoModules` {#ssec-fetch-go-modules}
+
+Nixpkgs provides the Nix function `fetchGoModules` that populates [Go module
+cache](https://go.dev/ref/mod#module-cache) directory suitable for offline use.
+The output can be passed to Go toolchain using {env}`GOMODCACHE` environment
+variable, or as a proxy directory: `GOPROXY=file://${goModules}/cache/download`.
+
+### Example for `fetchGoModules` {#ex-fetchGoModules}
+
+The following is an example expression using `fetchGoModules` with `buildGoModule`:
+
+```nix
+{
+  fetchFromGitHub,
+  buildGoModule,
+  fetchGoModules,
+}:
+buildGoModule (finalAttrs: {
+  pname = "hello";
+  version = "1.0.0";
+
+  src = fetchFromGitHub {
+    owner = "rsc";
+    repo = "hello";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-M7uvXFUddirgR5iQPWkncR+MFq16B1XQHqIUGQ/AmXw=";
+  };
+
+  goModules = fetchGoModules {
+    inherit (finalAttrs) src;
+    hash = "sha256-QG/iQBZYB0+p0b/CyFTFyXkriNVPDLkPreuIKweXE70=";
+  };
+})
+```
+
+Arguments (documented):
+- `src`, `srcs` same as stdenv.mkDerivation
+- `modRoots`
+- `postFetch`
+- `nativeBuildInputs`
+
+
+```
+# A derivation that can be passed to Go toolchain using GOMODCACHE=${drv}
+# environment variable, or as a proxy: GOPROXY=file://${drv}/cache/download
+# See also https://go.dev/ref/mod#module-cache
+{
+  # Paths to workspace or module directories where `go mod download` should be
+  # run. Uses current working directory (i.e. source root) if not set.
+  modRoots ? [ ],
+  # Rest is passed to mkDerivation as is.
+  ...
+}
+
+  # See https://go.dev/doc/modules/managing-source
+  # Go supports the following repositories for publishing modules:
+  git,
+  subversion,
+  mercurial,
+  breezy, # Bazaar
+  fossil,
+
+    # See also https://pkg.go.dev/cmd/go#hdr-Package_lists_and_patterns
+```

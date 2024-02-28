@@ -1,0 +1,34 @@
+Nix:
+
+# Provides a patches to construct overlays for Go modules.
+goModulesPatches = [
+  # Map package import path to a set of patches.
+  {
+    path = "zombiezen.com/go/postgrestest";
+    patches = [
+      # ...
+    ];
+  }
+  # ...
+};
+
+In Go, do `go list -m -json all` to list all packages. Needs `go mod download` to materialize the `Dir` field.
+
+Better: In Go, run `go mod download` for the module path. Use Dir field.
+
+Example:
+{
+  "Path": "zombiezen.com/go/postgrestest",
+  "Version": "v1.0.1",
+  "Time": "2021-01-26T02:23:43Z",
+  "Indirect": true,
+  "Dir": "/home/tie/go/pkg/mod/zombiezen.com/go/postgrestest@v1.0.1",
+  "GoMod": "/home/tie/go/pkg/mod/cache/download/zombiezen.com/go/postgrestest/@v/v1.0.1.mod",
+  "GoVersion": "1.14"
+}
+
+So match against Path and apply patches to Dir.
+
+Note that overlays are limited in terms of files that can be modified.
+
+See also https://github.com/felixge/go-patch-overlay/blob/main/main.go
