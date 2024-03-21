@@ -11,6 +11,7 @@ use Time::HiRes;
 
 my $nsenter = "@utillinux@/bin/nsenter";
 my $su = "@su@";
+my $nixosConfigFlakeUri = "@nixosConfigFlakeUri@/bin/nixos-config-flake-uri";
 
 my $configurationDirectory = "@configurationDirectory@";
 my $stateDirectory = "@stateDirectory@";
@@ -70,7 +71,7 @@ my $configFile;
 my $hostAddress;
 my $localAddress;
 my $flake;
-my $flakeAttr = "container";
+my $flakeUri;
 
 # Nix passthru flags.
 my @nixFlags;
@@ -129,9 +130,9 @@ if (defined $configFile and defined $extraConfig) {
         "Please define one or the other, but not both";
 }
 
-if (defined $flake && $flake =~ /^(.*)#([^#"]+)$/) {
-    $flake = $1;
-    $flakeAttr = $2;
+if (defined $flake) {
+    $flakeUri = `\Q$nixosConfigFlakeUri --hostname container -- \Q$flake`;
+    die "$0: failed to parse flake URI '$flake'\n" if $? != 0;
 }
 
 # Execute the selected action.
@@ -185,7 +186,7 @@ EOF
 
 sub buildFlake {
     system("nix", "build", "-o", "$systemPath.tmp", @nixFlags, "--",
-           "$flake#nixosConfigurations.\"$flakeAttr\".config.system.build.toplevel") == 0
+           "$flakeUri.config.system.build.toplevel") == 0
         or die "$0: failed to build container from flake '$flake'\n";
     $systemPath = readlink("$systemPath.tmp") or die;
     unlink("$systemPath.tmp");

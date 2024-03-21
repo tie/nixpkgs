@@ -2,6 +2,7 @@
 , perl
 , shadow
 , util-linux
+, nixos-config-flake-uri
 , configurationDirectory ? "/etc/nixos-containers"
 , stateDirectory ? "/var/lib/nixos-containers"
 , nixosTests
@@ -14,6 +15,7 @@ substituteAll {
     src = ./nixos-container.pl;
     perl = perl.withPackages (p: [ p.FileSlurp ]);
     su = "${shadow.su}/bin/su";
+    nixosConfigFlakeUri = nixos-config-flake-uri;
     utillinux = util-linux;
 
     inherit configurationDirectory stateDirectory;
