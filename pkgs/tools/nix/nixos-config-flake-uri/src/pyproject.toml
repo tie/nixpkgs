@@ -1,0 +1,15 @@
+[project]
+name = "nixos-config-flake-uri"
+version = "0.0"
+description = "Discover NixOS flake nixosConfigurations output attribute path"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+nixos-config-flake-uri = "nixos_config_flake_uri:main"
+
+[build-system]
+requires = ["setuptools"]

@@ -40234,6 +40234,8 @@ with pkgs;
     (import ../../nixos/lib/make-options-doc)
     ({ inherit pkgs lib; } // attrs);
 
+  nixos-config-flake-uri = callPackage ../tools/nix/nixos-config-flake-uri { };
+
   nixos-install-tools = callPackage ../tools/nix/nixos-install-tools { };
 
   nixos-render-docs = callPackage ../tools/nix/nixos-render-docs { };
