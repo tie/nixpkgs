@@ -112,21 +112,19 @@ if [[ ${NIXOS_CONFIG:0:1} != / ]]; then
 fi
 
 if [[ -n $flake ]]; then
-    if [[ $flake =~ ^(.*)\#([^\#\"]*)$ ]]; then
-       flake="${BASH_REMATCH[1]}"
-       flakeAttr="${BASH_REMATCH[2]}"
-    fi
-    if [[ -z "$flakeAttr" ]]; then
+    if [[ $flake != *#* ]]; then
         echo "Please specify the name of the NixOS configuration to be installed, as a URI fragment in the flake-uri."
         echo "For example, to use the output nixosConfigurations.foo from the flake.nix, append \"#foo\" to the flake-uri."
         exit 1
     fi
-    flakeAttr="nixosConfigurations.\"$flakeAttr\""
-fi
 
-# Resolve the flake.
-if [[ -n $flake ]]; then
-    flake=$(nix "${flakeFlags[@]}" flake metadata --json "${extraBuildFlags[@]}" "${lockFlags[@]}" -- "$flake" | jq -r .url)
+    flakeEnv=$(nixos-config-flake-uri --output-format env \
+        --output-fields flakeRef,flakeFragment -- "$flake")
+    eval "$flakeEnv"
+
+    # Resolve the flake.
+    flakeRef=$(nix "${flakeFlags[@]}" flake metadata --json "${extraBuildFlags[@]}" \
+        "${lockFlags[@]}" -- "$flakeRef" | jq -r .url)
 fi
 
 if [[ ! -e $NIXOS_CONFIG && -z $system && -z $flake ]]; then
@@ -169,8 +167,8 @@ if [[ -z $system ]]; then
             --extra-substituters "$sub" \
             '<nixpkgs/nixos>' -A system -I "nixos-config=$NIXOS_CONFIG" "${verbosity[@]}"
     else
-        echo "building the flake in $flake..."
-        nix "${flakeFlags[@]}" build "$flake#$flakeAttr.config.system.build.toplevel" \
+        echo "building the flake in $flakeRef..."
+        nix "${flakeFlags[@]}" build "$flakeRef#$flakeFragment.config.system.build.toplevel" \
             --store "$mountPoint" --extra-substituters "$sub" "${verbosity[@]}" \
             "${extraBuildFlags[@]}" "${lockFlags[@]}" --out-link "$outLink"
     fi

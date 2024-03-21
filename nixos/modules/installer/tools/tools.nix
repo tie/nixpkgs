@@ -31,6 +31,7 @@ let
     nix = config.nix.package.out;
     path = makeBinPath [
       pkgs.jq
+      pkgs.nixos-config-flake-uri
       nixos-enter
       pkgs.util-linuxMinimal
     ];
