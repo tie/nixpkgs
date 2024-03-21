@@ -379,22 +379,17 @@ if [[ -z $flake && -e /etc/nixos/flake.nix && -z $noFlake ]]; then
     flake="$(dirname "$(readlink -f /etc/nixos/flake.nix)")"
 fi
 
-# For convenience, use the hostname as the default configuration to
-# build from the flake.
+# For convenience, use the hostname as the default configuration to build from
+# the flake.
 if [[ -n $flake ]]; then
-    if [[ $flake =~ ^(.*)\#([^\#\"]*)$ ]]; then
-       flake="${BASH_REMATCH[1]}"
-       flakeAttr="${BASH_REMATCH[2]}"
+    if [[ $flake != *#* ]]; then
+        targetHostName=$(targetHostCmd uname -n)
     fi
-    if [[ -z $flakeAttr ]]; then
-        read -r hostname < /proc/sys/kernel/hostname
-        if [[ -z $hostname ]]; then
-            hostname=default
-        fi
-        flakeAttr="nixosConfigurations.\"$hostname\""
-    else
-        flakeAttr="nixosConfigurations.\"$flakeAttr\""
-    fi
+    flakeEnv="$(nixos-config-flake-uri --output-format env \
+        --output-fields flakeUri,flakeRef,flakeExpr \
+        ${targetHostName+--hostname "$targetHostName"} \
+        -- "$flake")"
+    eval "$flakeEnv"
 fi
 
 if [[ ! -z "$specialisation" && ! "$action" = switch && ! "$action" = test ]]; then
@@ -427,7 +422,7 @@ if [[ -z $_NIXOS_REBUILD_REEXEC && -n $canRun && -z $fast ]]; then
             SHOULD_REEXEC=1
         fi
     else
-        runCmd nix "${flakeFlags[@]}" build --out-link "${tmpDir}/nixos-rebuild" "$flake#$flakeAttr.config.system.build.nixos-rebuild" "${extraBuildFlags[@]}" "${lockFlags[@]}"
+        runCmd nix "${flakeFlags[@]}" build --out-link "${tmpDir}/nixos-rebuild" "$flakeUri.config.system.build.nixos-rebuild" "${extraBuildFlags[@]}" "${lockFlags[@]}"
         if p=$(readlink -e "${tmpDir}/nixos-rebuild"); then
             SHOULD_REEXEC=1
         fi
@@ -451,7 +446,7 @@ if [ "$action" = edit ]; then
         fi
         runCmd exec ${EDITOR:-nano} "$NIXOS_CONFIG"
     else
-        runCmd exec nix "${flakeFlags[@]}" edit "${lockFlags[@]}" -- "$flake#$flakeAttr"
+        runCmd exec nix "${flakeFlags[@]}" edit "${lockFlags[@]}" -- "$flakeUri"
     fi
     exit 1
 fi
@@ -546,30 +541,33 @@ if [ "$action" = repl ]; then
     # You should feel free to improve its behavior, as well as resolve tech
     # debt in "breaking" ways. Humans adapt quite well.
     if [[ -z $flake ]]; then
-        exec nix repl '<nixpkgs/nixos>' "${extraBuildFlags[@]}"
+        runCmd exec nix repl --extra-experimental-features nix-command '<nixpkgs/nixos>' "${extraBuildFlags[@]}"
     else
         if [[ -n "${lockFlags[0]}" ]]; then
             # nix repl itself does not support locking flags
             log "nixos-rebuild repl does not support locking flags yet"
             exit 1
         fi
-        d='$'
-        q='"'
         bold="$(echo -e '\033[1m')"
         blue="$(echo -e '\033[34;1m')"
         attention="$(echo -e '\033[35;1m')"
         reset="$(echo -e '\033[0m')"
+        # Export for use in exec-ed Nix expression. Escaping Nix expressions is
+        # not trivial in Bash.
+        export flakeRef="$flakeRef" flakeExpr="$flakeExpr"
         # This nix repl invocation is impure, because usually the flakeref is.
         # For a solution that preserves the motd and custom scope, we need
         # something like https://github.com/NixOS/nix/issues/8679.
-        exec nix repl --impure --expr "
-          let flake = builtins.getFlake ''$flake'';
-              configuration = flake.$flakeAttr;
+        runCmd exec nix repl "${flakeFlags[@]}" --impure --expr "
+          let flakeRef = builtins.getEnv \"flakeRef\";
+              flakeExpr = builtins.getEnv \"flakeExpr\";
+              flake = builtins.getFlake flakeRef;
+              configuration = flake.$flakeExpr;
               motd = ''
-                $d{$q\n$q}
+                \${\"\n\"}
                 Hello and welcome to the NixOS configuration
-                    $flakeAttr
-                    in $flake
+                    \${flakeExpr}
+                    in \${flakeRef}
 
                 The following is loaded into nix repl's scope:
 
@@ -579,12 +577,12 @@ if [ "$action" = repl ]; then
                     - ${blue}lib${reset}      Nixpkgs library functions
                     - other module arguments
 
-                    - ${blue}flake${reset}    Flake outputs, inputs and source info of $flake
+                    - ${blue}flake${reset}    Flake outputs, inputs and source info of \${flakeRef}
 
                 Use tab completion to browse around ${blue}config${reset}.
 
                 Use ${bold}:r${reset} to ${bold}reload${reset} everything after making a change in the flake.
-                  (assuming $flake is a mutable flake ref)
+                  (assuming \${flakeRef} is a mutable flake ref)
 
                 See ${bold}:?${reset} for more repl commands.
 
@@ -696,7 +694,7 @@ if [ -z "$rollback" ]; then
         if [[ -z $flake ]]; then
             pathToConfig="$(nixBuild '<nixpkgs/nixos>' --no-out-link -A system "${extraBuildFlags[@]}")"
         else
-            pathToConfig="$(nixFlakeBuild "$flake#$flakeAttr.config.system.build.toplevel" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
+            pathToConfig="$(nixFlakeBuild "$flakeUri.config.system.build.toplevel" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
         fi
         copyToTarget "$pathToConfig"
         targetHostSudoCmd nix-env -p "$profile" --set "$pathToConfig"
@@ -704,19 +702,19 @@ if [ -z "$rollback" ]; then
         if [[ -z $flake ]]; then
             pathToConfig="$(nixBuild '<nixpkgs/nixos>' -A system -k "${extraBuildFlags[@]}")"
         else
-            pathToConfig="$(nixFlakeBuild "$flake#$flakeAttr.config.system.build.toplevel" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
+            pathToConfig="$(nixFlakeBuild "$flakeUri.config.system.build.toplevel" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
         fi
     elif [ "$action" = build-vm ]; then
         if [[ -z $flake ]]; then
             pathToConfig="$(nixBuild '<nixpkgs/nixos>' -A vm -k "${extraBuildFlags[@]}")"
         else
-            pathToConfig="$(nixFlakeBuild "$flake#$flakeAttr.config.system.build.vm" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
+            pathToConfig="$(nixFlakeBuild "$flakeUri.config.system.build.vm" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
         fi
     elif [ "$action" = build-vm-with-bootloader ]; then
         if [[ -z $flake ]]; then
             pathToConfig="$(nixBuild '<nixpkgs/nixos>' -A vmWithBootLoader -k "${extraBuildFlags[@]}")"
         else
-            pathToConfig="$(nixFlakeBuild "$flake#$flakeAttr.config.system.build.vmWithBootLoader" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
+            pathToConfig="$(nixFlakeBuild "$flakeUri.config.system.build.vmWithBootLoader" "${extraBuildFlags[@]}" "${lockFlags[@]}")"
         fi
     else
         showSyntax

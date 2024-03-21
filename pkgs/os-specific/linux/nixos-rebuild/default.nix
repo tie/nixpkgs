@@ -6,6 +6,7 @@
 , gnugrep
 , jq
 , util-linux
+, nixos-config-flake-uri
 , nix
 , lib
 , nixosTests
@@ -23,7 +24,7 @@ substituteAll {
   nix_x86_64_linux = fallback.x86_64-linux;
   nix_i686_linux = fallback.i686-linux;
   nix_aarch64_linux = fallback.aarch64-linux;
-  path = lib.makeBinPath [ coreutils gnused gnugrep jq util-linux ];
+  path = lib.makeBinPath [ coreutils gnused gnugrep jq util-linux nixos-config-flake-uri ];
   nativeBuildInputs = [
     installShellFiles
   ];
@@ -37,7 +38,7 @@ substituteAll {
   # run some a simple installer tests to make sure nixos-rebuild still works for them
   passthru.tests = {
     install-bootloader = nixosTests.nixos-rebuild-install-bootloader;
-    repl = callPackage ./test/repl.nix {};
+    expect = callPackage ./test/expect.nix { };
     simple-installer = nixosTests.installer.simple;
     specialisations = nixosTests.nixos-rebuild-specialisations;
     target-host = nixosTests.nixos-rebuild-target-host;

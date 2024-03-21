@@ -1,6 +1,12 @@
 # This module generates nixos-install, nixos-rebuild,
 # nixos-generate-config, etc.
 
+# TODO: we should probably be exposing tools with buildPackages instead since
+# these are used e.g. in nixos-rebuild to re-exec into the version from Nixpkgs
+# tree. Currently these tools fail when building for a different system and the
+# workaround is to disable this behavior altogether, e.g. pass --fast flag in
+# case of nixos-rebuild.
+
 { config, lib, pkgs, ... }:
 
 with lib;

@@ -60,7 +60,8 @@ runCommand "test-nixos-rebuild-repl" {
 
   export NIX_PATH=nixpkgs=$nixpkgs:nixos-config=$HOME/configuration.nix
   cat >> ~/configuration.nix <<EOF
-  {
+  { lib, ... }: {
+    system.stateVersion = lib.trivial.release;
     boot.loader.grub.enable = false;
     fileSystems."/".device = "x";
     imports = [ ./hardware-configuration.nix ];
@@ -75,7 +76,7 @@ runCommand "test-nixos-rebuild-repl" {
 
   expect ${writeText "test-nixos-rebuild-repl-expect" ''
     ${expectSetup}
-    spawn nixos-rebuild repl --fast
+    spawn nixos-rebuild repl --offline --fast
 
     expect "nix-repl> "
 
@@ -103,8 +104,7 @@ runCommand "test-nixos-rebuild-repl" {
       nixosConfigurations.testconf = nixpkgs.lib.nixosSystem {
         modules = [
           ./configuration.nix
-          # Let's change it up a bit
-          { networking.hostName = "itsme"; }
+          { networking.hostName = "nixos-flakes"; }
         ];
       };
     };
@@ -115,12 +115,12 @@ runCommand "test-nixos-rebuild-repl" {
 
   expect ${writeText "test-nixos-rebuild-repl-expect" ''
     ${expectSetup}
-    spawn sh -c "nixos-rebuild repl --fast --flake path:\$HOME#testconf"
+    spawn sh -u -e -c "exec nixos-rebuild repl --offline --fast --flake path:\$HOME#testconf"
 
     expect_simple "nix-repl>"
 
     send "config.networking.hostName\n"
-    expect_simple "itsme"
+    expect_simple "nixos-flakes"
 
     expect_simple "nix-repl>"
     send "lib.version\n"
@@ -138,6 +138,15 @@ runCommand "test-nixos-rebuild-repl" {
     send "lib?nixos\n"
     expect_simple "true"
   ''}
+
+  expect ${writeText "test-nixos-rebuild-dry-build-expect" ''
+    ${expectSetup}
+    spawn sh -u -e -c "exec nixos-rebuild dry-build --offline --fast --log-format raw --flake path:\$HOME#testconf"
+    expect_simple "building the system configuration..."
+    expect eof
+    wait
+  ''}
+
   echo
 
   #########
