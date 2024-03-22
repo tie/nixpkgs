@@ -101,12 +101,15 @@ runCommand "test-nixos-rebuild-repl" {
   {
     inputs.nixpkgs.url = "path:$nixpkgs";
     outputs = { nixpkgs, ... }: {
-      nixosConfigurations.testconf = nixpkgs.lib.nixosSystem {
-        modules = [
-          ./configuration.nix
-          { networking.hostName = "nixos-flakes"; }
-        ];
-      };
+      configurations = (with nixpkgs.lib; genAttrs platforms.all) (system: {
+        testconf = nixpkgs.lib.nixosSystem {
+          modules = [
+            ./configuration.nix
+            { nixpkgs.buildPlatform = system; }
+            { networking.hostName = "nixos-flakes"; }
+          ];
+        };
+      });
     };
   }
   EOF
@@ -139,9 +142,11 @@ runCommand "test-nixos-rebuild-repl" {
     expect_simple "true"
   ''}
 
+  # NB we use absolute attribute path to avoid NixOS/Nixpkgs evaluation issues
+  # when buildPlatform != hostPlatform.
   expect ${writeText "test-nixos-rebuild-dry-build-expect" ''
     ${expectSetup}
-    spawn sh -u -e -c "exec nixos-rebuild dry-build --offline --fast --log-format raw --flake path:\$HOME#testconf"
+    spawn sh -u -e -c "exec nixos-rebuild dry-build --offline --fast --log-format raw --flake path:\$HOME#.configurations.${linuxSystem}.testconf"
     expect_simple "building the system configuration..."
     expect eof
     wait

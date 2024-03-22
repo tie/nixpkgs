@@ -14,6 +14,7 @@ class OutputFormat(enum.StrEnum):
 class TypedArgs:
     flake_uri: str
     nix_version: typing.Optional[str]
+    system: typing.Optional[str]
     hostname: typing.Optional[str]
     output_format: OutputFormat
     output_fields: typing.Optional[str]
@@ -22,8 +23,7 @@ class TypedArgs:
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="nixos-config-flake-uri",
-        description="Discover NixOS flake nixosConfigurations output attribute"
-                    " path",
+        description="Discover NixOS configuration flake output attribute path",
     )
     p.add_argument(
         "flake_uri",
@@ -32,6 +32,10 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--nix-version",
         help="Nix version to assume for feature checks",
+    )
+    p.add_argument(
+        "--system",
+        help="system name to use (defaults to builtins.currentSystem)",
     )
     p.add_argument(
         "--hostname",

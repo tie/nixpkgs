@@ -1,7 +1,7 @@
 [project]
 name = "nixos-config-flake-uri"
 version = "0.0"
-description = "Discover NixOS flake nixosConfigurations output attribute path"
+description = "Discover NixOS configuration flake output attribute path"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

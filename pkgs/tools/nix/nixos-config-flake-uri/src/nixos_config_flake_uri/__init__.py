@@ -7,7 +7,7 @@ from . import arguments
 from . import flakeuri
 from . import nix
 
-NIXOS_CONFIGURATIONS_OUTPUT = "nixosConfigurations"
+NIXOS_CONFIGURATIONS_OUTPUT = "configurations"
 
 
 def main() -> None:
@@ -15,8 +15,11 @@ def main() -> None:
 
     flake_ref, flake_uri_fragment = flakeuri.parse_url_fragment(args.flake_uri)
 
+    current_system = (args.system if args.system is not None
+                      else nix.nix_current_system())
     parsed_attr_path = [
         NIXOS_CONFIGURATIONS_OUTPUT,
+        current_system,
     ]
     if flake_uri_fragment is not None:
         try:
@@ -39,7 +42,7 @@ def main() -> None:
             flakeuri.quote_attr_path(parsed_attr_path),
         )
     except flakeuri.MalformedAttributeName:
-        # This can happen if hostname contain quotes.
+        # This can happen if either system or hostname contain quotes.
         # Attribute path from URI fragment is safe since otherwise parsing
         # fails with an error due to unbalanced quotes.
         sys.exit(f"error: attribute path {nix_escaped_attr_path} contains"

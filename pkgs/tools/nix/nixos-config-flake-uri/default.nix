@@ -40,7 +40,7 @@ python3Packages.buildPythonApplication {
   };
 
   meta = {
-    description = "Discover NixOS flake nixosConfigurations output attribute path";
+    description = "Discover NixOS configuration flake output attribute path";
     license = lib.licenses.mit;
     maintainers = [ ];
   };

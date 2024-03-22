@@ -374,10 +374,10 @@ Build the NixOS system from the specified flake. It defaults to the directory
 containing the target of the symlink
 .Pa /etc/nixos/flake.nix Ns
 , if it exists. The flake must contain an output named
-.Ql nixosConfigurations. Ns Va name Ns
+.Ql configurations. Ns Va system Ns \&. Ns Va name Ns
 \&. If
 .Va name
-is omitted, it default to the current host name.
+is omitted, it defaults to the current host name.
 .
 .It Fl -no-flake
 Do not imply

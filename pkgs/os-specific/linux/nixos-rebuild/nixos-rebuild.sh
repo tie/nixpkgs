@@ -382,13 +382,23 @@ fi
 # For convenience, use the hostname as the default configuration to build from
 # the flake.
 if [[ -n $flake ]]; then
+    # Get system value for the build host in case we are evaluating on a
+    # different system. Note that we are being defensive against older Nix
+    # versions: instead of using `nix config show system`, we evaluate
+    # builtins.currentSystem while also ensuring that eval-system option
+    # is set to an empty value.
+    buildHostSystem=$(buildHostCmd nix "${flakeFlags[@]}" eval \
+         "${extraBuildFlags[@]}" \
+         --raw --no-pure-eval --option eval-system "" \
+         --expr builtins.currentSystem)
+    # Likewise, get hostname from target host to use as an attribute path.
     if [[ $flake != *#* ]]; then
         targetHostName=$(targetHostCmd uname -n)
     fi
     flakeEnv="$(nixos-config-flake-uri --output-format env \
         --output-fields flakeUri,flakeRef,flakeExpr \
         ${targetHostName+--hostname "$targetHostName"} \
-        -- "$flake")"
+        --system "$buildHostSystem" -- "$flake")"
     eval "$flakeEnv"
 fi
 

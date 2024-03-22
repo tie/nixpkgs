@@ -5,16 +5,18 @@
   inputs.nixpkgs.url = "@nixpkgs@";
 
   outputs = { nixpkgs, ... }: {
-
-    nixosConfigurations.xyz = nixpkgs.lib.nixosSystem {
-      modules = [
-        ./configuration.nix
-        ( nixpkgs + "/nixos/modules/testing/test-instrumentation.nix" )
-        {
-          # We don't need nix-channel anymore
-          nix.channel.enable = false;
-        }
-      ];
-    };
+    configurations = (with nixpkgs.lib; genAttrs platforms.all) (system: {
+      xyz = nixpkgs.lib.nixosSystem {
+        modules = [
+          ./configuration.nix
+          { nixpkgs.buildPlatform = system; }
+          (nixpkgs + "/nixos/modules/testing/test-instrumentation.nix")
+          {
+            # We don't need nix-channel anymore
+            nix.channel.enable = false;
+          }
+        ];
+      };
+    });
   };
 }

@@ -113,8 +113,11 @@ fi
 
 if [[ -n $flake ]]; then
     if [[ $flake != *#* ]]; then
+        currentSystem=$(nix "${flakeFlags[@]}" eval --raw \
+             --no-pure-eval --option eval-system "" \
+             --expr builtins.currentSystem)
         echo "Please specify the name of the NixOS configuration to be installed, as a URI fragment in the flake-uri."
-        echo "For example, to use the output nixosConfigurations.foo from the flake.nix, append \"#foo\" to the flake-uri."
+        echo "For example, to use the output configurations.$currentSystem.foo from the flake.nix, append \"#foo\" to the flake-uri."
         exit 1
     fi
 
