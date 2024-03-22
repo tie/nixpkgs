@@ -16,8 +16,8 @@ class TypedArgs:
     nix_version: typing.Optional[str]
     system: typing.Optional[str]
     hostname: typing.Optional[str]
-    output_format: OutputFormat
-    output_fields: typing.Optional[str]
+    output_format: OutputFormat = OutputFormat.TEXT
+    output_fields: typing.Optional[str] = None
 
 
 def parser() -> argparse.ArgumentParser:
