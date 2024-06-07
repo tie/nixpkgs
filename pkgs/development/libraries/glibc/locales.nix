@@ -7,12 +7,45 @@
 */
 
 { lib, stdenv, buildPackages, callPackage, writeText, glibc
+, runCommandCC, makeBinaryWrapper
+, withoutEmulator ? stdenv.buildPlatform.isLinux
 , allLocales ? true, locales ? [ "en_US.UTF-8/UTF-8" ]
 }:
 
+let
+  # If possible, use glibc from previous stage since glibc can’t cross-compile
+  # locale data.
+  # See also https://crosstool-ng.github.io/docs/caveats-features#gnu-libc-locales
+  deps =
+    if withoutEmulator then
+      {
+        localedefPackage = glibc;
+        localedefProgram = "localedef";
+        glibcPackageForHack = buildPackages.glibc;
+      }
+    else
+      # Build platform is not Linux, but we can use emulator to run localedef
+      # from the host package set.
+      {
+        localedefProgram = "localedef-emulator";
+        localedefPackage =
+          runCommandCC "localedef-emulator"
+            {
+              emulator = stdenv.hostPlatform.emulator buildPackages;
+              glibcBin = glibc.bin;
+              depsBuildBuild = [ makeBinaryWrapper ];
+            }
+            ''
+              makeWrapper "$emulator" "$out"/bin/localedef-emulator \
+                --add-flags "$glibcBin"/bin/localedef
+            '';
+        glibcPackageForHack = glibc;
+      };
+in
+
 (callPackage ./common.nix { inherit stdenv; } {
   pname = "glibc-locales";
-  extraNativeBuildInputs = [ glibc ];
+  extraNativeBuildInputs = [ deps.localedefPackage ];
 }).overrideAttrs(finalAttrs: previousAttrs: {
 
   builder = ./locales-builder.sh;
@@ -33,12 +66,12 @@
       # $TMPDIR/nix/store/...-glibc-.../lib/locale/locale-archive.
       LOCALEDEF_FLAGS+=" --prefix=$TMPDIR"
 
-      mkdir -p $TMPDIR/"${buildPackages.glibc.out}/lib/locale"
+      mkdir -p $TMPDIR/"${deps.glibcPackageForHack.out}/lib/locale"
 
       echo 'C.UTF-8/UTF-8 \' >> ../glibc-2*/localedata/SUPPORTED
 
       # Hack to allow building of the locales (needed since glibc-2.12)
-      sed -i -e 's,^$(rtld-prefix) $(common-objpfx)locale/localedef,localedef $(LOCALEDEF_FLAGS),' ../glibc-2*/localedata/Makefile
+      sed -i -e 's,^$(rtld-prefix) $(common-objpfx)locale/localedef,${deps.localedefProgram} $(LOCALEDEF_FLAGS),' ../glibc-2*/localedata/Makefile
     ''
       + lib.optionalString (!allLocales) ''
       # Check that all locales to be built are supported
