@@ -12330,6 +12330,8 @@ self: super: with self; {
 
   pulumi-hcloud = callPackage ../development/python-modules/pulumi-hcloud { };
 
+  pulumi-postgresql = callPackage ../development/python-modules/pulumi-postgresql { };
+
   pulumi-random = callPackage ../development/python-modules/pulumi-random { };
 
   pulumi-yandex-unofficial = callPackage ../development/python-modules/pulumi-yandex-unofficial { };
