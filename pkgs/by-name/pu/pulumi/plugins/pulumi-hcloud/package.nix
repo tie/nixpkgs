@@ -9,6 +9,7 @@
   pulumi-go,
   pulumi-nodejs,
   pulumi-python,
+  pulumi-std,
   pulumi-converter-terraform,
   pulumi-hcloud,
   nix-update-script,
@@ -39,7 +40,7 @@ buildGoModule rec {
     pulumi-go
     pulumi-nodejs
     pulumi-python
-    # TODO: add pulumi-std for docs
+    pulumi-std
     pulumi-converter-terraform
   ];
 

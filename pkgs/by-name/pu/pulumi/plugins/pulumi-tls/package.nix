@@ -9,6 +9,8 @@
   pulumi-go,
   pulumi-nodejs,
   pulumi-python,
+  pulumi-std,
+  pulumi-converter-terraform,
   pulumi-tls,
   nix-update-script,
 }:
@@ -38,6 +40,8 @@ buildGoModule rec {
     pulumi-go
     pulumi-nodejs
     pulumi-python
+    pulumi-std
+    pulumi-converter-terraform
   ];
 
   ldflags = [
@@ -85,7 +89,7 @@ buildGoModule rec {
 
   postInstall = ''
     for lang in go nodejs python; do
-      "$codegen"/bin/pulumi-tfgen-tls "$lang" --out "$sdk/$lang"
+      PULUMI_CONVERT=1 "$codegen"/bin/pulumi-tfgen-tls "$lang" --out "$sdk/$lang"
     done
     cp -t "$sdk/python" ../README.md
   '';

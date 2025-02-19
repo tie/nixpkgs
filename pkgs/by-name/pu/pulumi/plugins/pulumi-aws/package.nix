@@ -13,6 +13,7 @@
   pulumi-go,
   pulumi-nodejs,
   pulumi-python,
+  pulumi-std,
   pulumi-converter-terraform,
   pulumi-aws,
   nix-update-script,
@@ -58,6 +59,7 @@ buildGoModule rec {
     pulumi-go
     pulumi-nodejs
     pulumi-python
+    pulumi-std
     pulumi-converter-terraform
     nodejs
     yarn
