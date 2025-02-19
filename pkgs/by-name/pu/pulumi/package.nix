@@ -118,6 +118,7 @@ buildGoModule rec {
     pkgs = callPackage ./plugins.nix { };
     withPackages = callPackage ./with-packages.nix { };
     tests = {
+      withPackagesTest = callPackage ./with-packages-test.nix { };
       version = testers.testVersion {
         package = pulumi;
         version = "v${version}";
