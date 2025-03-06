@@ -40,6 +40,7 @@ let
     concatLines
     concatMapAttrs
     concatMapAttrsStringSep
+    concatMapAttrsToList
     concatMapStrings
     concatStrings
     concatStringsSep
@@ -1150,6 +1151,25 @@ runTests {
       foobar = "baz";
       foobarbaz = "baz";
     };
+  };
+
+  testConcatMapAttrsToList = {
+    expr =
+      concatMapAttrsToList
+        (name: value: [
+          name
+          value
+        ])
+        {
+          x = "a";
+          y = "b";
+        };
+    expected = [
+      "x"
+      "a"
+      "y"
+      "b"
+    ];
   };
 
   testFilterAttrs = {
